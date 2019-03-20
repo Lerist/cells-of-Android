@@ -120,6 +120,7 @@
        1）..._os_Zygote.cpp 文件中 gOpenFdTable abort 问题，解决办法：辅助系统单方面屏蔽该功能
        2）模拟sdcard无法挂载，解决办法：init.cell.rc 中增加 mkdir /storage 0755 root root 
        3) 动态调频功能无法使用，解决办法：辅助系统单方面屏蔽该功能
+       4) 辅助系统sdcard挂不上，有可能是物理sdcard和虚拟sdcard要分开用，物理的挂在主系统上，虚拟的挂在辅助系统中，虚拟sdcard是用fuse实现的
        
     4、最后双系统主体结构便构造完成了，如果想完整产品化，还有很长的路需要完成
     
