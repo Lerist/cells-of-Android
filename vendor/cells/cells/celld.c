@@ -1136,7 +1136,6 @@ static void *mount_camera(void *opaque)
 int __do_switch_host_and_vm(char *name)
 {
 	char buf[64];
-	int cur_proc_id = 1;
 	int proc_id = 1;
 	int fd;
 	struct cell_node *cell =NULL;
@@ -1156,26 +1155,16 @@ int __do_switch_host_and_vm(char *name)
 		return -1;
 	}
 
-	if (read(fd, buf, strnlen(buf, sizeof(buf))) == -1) {
-		close(fd);
-		return -2;
-	}
-
-	cur_proc_id = atoi(buf);
-	ALOGE("cur pid= %d ,next pid= %d", cur_proc_id,proc_id);
-	if(cur_proc_id == proc_id){
-		close(fd);
-		return -3;
-	}
-
 	/* Do the switch */
 	snprintf(buf, sizeof(buf), "%d", proc_id);
 	if (write(fd, buf, strnlen(buf, sizeof(buf))) == -1) {
 		close(fd);
-		return -4;
+		return -1;
 	}
 
+	pthread_mutex_lock(&active_cell_lock);
 	active_cell = cell;
+	pthread_mutex_unlock(&active_cell_lock);
 
 	close(fd);
 	return 0;
