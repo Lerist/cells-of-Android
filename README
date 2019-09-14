@@ -3,21 +3,21 @@
 1、位于vendor目录下的cells目录
     1)、cells --- 容器生成进程,能启动init进程
                         其中celld是运行在主系统中的daemon进程，负责创建容器空间
-                        其中cell是celld对应的命令行程序
-                        其中hostcmd是运行在主系统中的daemon进程，负责与辅助系统交互
-                        其中vmcmd是运行在辅助系统中的daemon进程，负责与主系统交互
-    
-    2)、fingerprintd --- 指纹虚拟化
+                        其中cellc是celld对应的命令行程序
 
-    3)、Kernel_Kmsg --- 内核日志保存
+    2)、cellsserive ---  运行在主系统和辅助系统中的daemon进程，负责两系统交互
 
-    4)、logcat --- ap日志保存
+    3)、fingerprintd --- 指纹虚拟化
 
-    5)、qemuxproxy --- socket 代理，接受一个socket的数据，转发给另一个socket(双系统各设备的虚拟化核心就是接口代理、就是进程间通信，binder、socket、netlink等)
+    4)、Kernel_Kmsg --- 内核日志保存
 
-    6)、SecureSystemSwitch --- 双系统切换APP，上层应用，实际功能实现在hostcmd、vmcmd中
+    5)、logcat --- ap日志保存
 
-    7)、StopSystem --- 双系统切换成单系统APP，上层应用，双系统切成单系统功能，实际功能实现在hostcmd中
+    6)、qemuxproxy --- socket 代理，接受一个socket的数据，转发给另一个socket(双系统各设备的虚拟化核心就是接口代理、就是进程间通信，binder、socket、netlink等)
+
+    7)、SecureSystemSwitch --- 双系统切换APP，上层应用，实际功能实现在hostcmd、vmcmd中
+
+    8)、StopSystem --- 双系统切换成单系统APP，上层应用，双系统切成单系统功能，实际功能实现在hostcmd中
 
 2、位于system目录下的core目录
     1)、adb --- adb 虚拟化，核心原理就是adb daemon 进程 互斥的运行在两个系统中

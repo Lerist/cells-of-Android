@@ -1,28 +1,3 @@
-/*
- * celld.h
- *
- * Structures and definitions for the Cells controlling daemon, celld
- *
- * Copyright (C) 2010-2013 Columbia University
- * Authors: Christoffer Dall <cdall@cs.columbia.edu>
- *		  Jeremy C. Andrus <jeremya@cs.columbia.edu>
- *		  Alexander Van't Hof <alexvh@cs.columbia.edu>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
- * USA.
- */
 #ifndef CELLD_H
 #define CELLD_H
 
@@ -46,12 +21,7 @@
 #define DEFL_CELL_DIR "/data/cells"
 #define DEFL_SDCARD_ROOT "/mnt/user/cells"
 //#define DEFL_START_OPTS "-CMSWdgimptu"
-#define DEFL_START_OPTS "-CMSWdgimpwu"
-
-#define CELLS_MOBILE_IF_NAME	"rmnet_data0"
-#define CELLS1_HOST_IP	"172.17.202.5"
-#define CELLS2_HOST_IP	"172.17.202.37"
-#define CELLS_HOST_IP_MASK	"255.255.255.252"
+#define DEFL_START_OPTS "-CMSWdgimpwun"
 
 #define CONSOLE_READY_MSG "ready"
 #define CONSOLE_READY_MSG_LEN 8 /* strlen("0 ready") + sizeof('\0') */

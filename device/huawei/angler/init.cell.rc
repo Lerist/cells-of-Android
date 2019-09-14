@@ -6,7 +6,7 @@
 
 import /init.environ.rc
 import /init.usb.rc
-import /init.${ro.hardware}.rc
+import /init.angler.rc
 import /init.usb.configfs.rc
 import /init.${ro.zygote}.rc
 import /init.trace.rc
@@ -550,7 +550,7 @@ on property:vold.decrypt=trigger_shutdown_framework
     class_reset main
 
 on property:sys.powerctl=*
-    powerctl ${sys.powerctl}
+    exec - root root -- /system/bin/cellssync sys.powerctl
 
 # system server cannot write to /proc/sys files,
 # and chown/chmod does not work for /proc/sys/ entries.
@@ -631,7 +631,8 @@ service servicemanager /system/bin/servicemanager
     onrestart restart zygote
     onrestart restart media
     onrestart restart surfaceflinger
-    onrestart restart drm
+    onrestart restart drm 
+    onrestart restart cellsservice
 
 service vold /system/bin/vold \
         --blkid_context=u:r:blkid:s0 --blkid_untrusted_context=u:r:blkid_untrusted:s0 \
@@ -656,13 +657,13 @@ service debuggerd64 /system/bin/debuggerd64
     class main
     writepid /dev/cpuset/system-background/tasks
 
-#service ril-daemon /system/bin/rild
-#    class main
-#    socket rild stream 660 root radio
-#    socket sap_uim_socket1 stream 660 bluetooth bluetooth
-#    socket rild-debug stream 660 radio system
-#    user root
-#    group radio cache inet misc audio log
+service ril-daemon /system/bin/rild
+    class main
+    socket rild stream 660 root radio
+    socket sap_uim_socket1 stream 660 bluetooth bluetooth
+    socket rild-debug stream 660 radio system
+    user root
+    group radio cache inet misc audio log
 
 #service surfaceflinger /system/bin/surfaceflinger
 #    class core
@@ -675,11 +676,11 @@ service drm /system/bin/drmserver
     user drm
     group drm system inet drmrpc
 
-service media /system/bin/mediaserver
-    class main
-    user media
-    group audio camera inet net_bt net_bt_admin net_bw_acct drmrpc mediadrm
-    ioprio rt 4
+#service media /system/bin/mediaserver
+#    class main
+#    user media
+#    group audio camera inet net_bt net_bt_admin net_bw_acct drmrpc mediadrm
+#    ioprio rt 4
 
 # One shot invocation to deal with encrypted volume.
 service defaultcrypto /system/bin/vdc --wait cryptfs mountdefaultencrypted
@@ -796,9 +797,13 @@ service kmsg_logfs /system/bin/kernel_kmsg_cells -K -n 20 -r 5000 -v threadtime 
     class main
     disabled
 
-service vmcmd /system/bin/vmcmd
+#service vmcmd /system/bin/vmcmd
+#    class main
+#    user root
+#    group root
+#    writepid /dev/cpuset/system-background/tasks
+
+service cellsservice /system/bin/cellsservice
     class main
     user root
     group root
-    disabled
-    writepid /dev/cpuset/system-background/tasks

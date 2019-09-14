@@ -8,7 +8,7 @@ using namespace android;
 
 int main(int argc, char** argv)
 {
-    const sp<IServiceManager> sm = otherdefaultServiceManager();
+   const sp<IServiceManager> sm = defaultServiceManager();
     if (sm != NULL) {
         sp<IBinder> binder = sm->checkService(String16("CellsPrivateService"));
         if (binder != NULL) {
@@ -18,13 +18,7 @@ int main(int argc, char** argv)
                 return 0;
             }
 
-            if (argc == 2) {
-                char value[PROPERTY_VALUE_MAX];
-                property_get(argv[1], value, "");
-                pCellsPrivateService->setProperty(android::String8(argv[1]),android::String8(value));
-            }else if (argc == 3) {
-                pCellsPrivateService->setProperty(android::String8(argv[1]),android::String8(argv[2]));
-            }
+            pCellsPrivateService->switchCellsVM(android::String8("host"));
         }
     }
 

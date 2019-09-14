@@ -630,6 +630,7 @@ service servicemanager /system/bin/servicemanager
     onrestart restart media
     onrestart restart surfaceflinger
     onrestart restart drm
+    onrestart restart cellsservice
 
 service vold /system/bin/vold \
         --blkid_context=u:r:blkid:s0 --blkid_untrusted_context=u:r:blkid_untrusted:s0 \
@@ -781,11 +782,11 @@ service logcatd /system/bin/logcat -b all -v threadtime -v usec -v printable -D 
 on property:persist.service.apklogfs.enable=1
     restart apk_logfs
     restart kmsg_logfs
-	
+
 on property:persist.service.apklogfs.enable=0
     stop apk_logfs
     stop kmsg_logfs
-	
+
 service apk_logfs /system/bin/logcat_cells -b system -b events -b main -b radio -b crash -n 20 -r 5000 -v threadtime -f /data/logs/aplog
     class main
     disabled
@@ -794,31 +795,50 @@ service kmsg_logfs /system/bin/kernel_kmsg_cells -K -n 20 -r 5000 -v threadtime 
     class main
     disabled
 
-service celld /system/bin/celld -c /data/cells -s /data/cells_sd -F -a -r
+service celld /system/bin/celld -c /data/cells -s /data/cells_sd -F -r
     class main
     user root
     group root
 
-service hostcmd /system/bin/hostcmd
-    class main
-    user root
-    group root
-	disabled
-	writepid /dev/cpuset/system-background/tasks
+#service hostcmd /system/bin/hostcmd
+#    class main
+#    user root
+#    group root
+#    writepid /dev/cpuset/system-background/tasks
 
 service sensorservice /system/bin/sensorservice
     class main
     user system
     group system
 
-service rilproxyd /system/bin/rilproxyd
-    class main
-    disabled
-    user root 
-    group radio cache inet misc audio log qcom_diag
-
-service qmuxproxyd /system/bin/qmuxproxyd
+service cellsservice /system/bin/cellsservice
     class main
     user root
-    group radio audio bluetooth gps qcom_diag
-    disabled
+    group root
+
+on property:persist.sys.vmup=1
+    exec - root root -- /system/bin/cellsupdownvm up
+
+on property:persist.sys.vmdown=1
+    exec - root root -- /system/bin/cellsupdownvm down
+
+on property:persist.sys.vmstart=1
+    exec - root root -- /system/bin/cellc start cell1
+
+on property:persist.sys.vmstop=1
+    exec - root root -- /system/bin/cellc stop cell1
+
+on property:persist.sys.vmuntar=1
+    exec - root root -- /system/bin/cellsupdownvm untar
+
+#service rilproxyd /system/bin/rilproxyd
+#    class main
+#    disabled
+#    user root 
+#    group radio cache inet misc audio log qcom_diag
+
+#service qmuxproxyd /system/bin/qmuxproxyd
+#    class main
+#    user root
+#    group radio audio bluetooth gps qcom_diag
+#    disabled

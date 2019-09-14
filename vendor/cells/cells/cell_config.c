@@ -1,28 +1,3 @@
-/*
- * cell_config.c
- *
- * Cells configuration file manipulation
- *
- * Copyright (C) 2010-2013 Columbia University
- * Authors: Christoffer Dall <cdall@cs.columbia.edu>
- *		  Jeremy C. Andrus <jeremya@cs.columbia.edu>
- *		  Alexander Van't Hof <alexvh@cs.columbia.edu>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
- * USA.
- */
 #include <dirent.h>
 #include <errno.h>
 #include <stdio.h>
@@ -164,6 +139,7 @@ int read_config(char *name, struct config_info *config)
 	int ret;
 	FILE *fp;
 
+	init_cellvm_config(name);
 	fp = open_config(name, "r");
 	if (fp == NULL)
 		return -1;
@@ -201,7 +177,8 @@ int read_config(char *name, struct config_info *config)
 
 err_read_config:
 	fclose(fp);
-	return -1;
+	if(remove_config(name) == 0) return read_config(name, config);
+	else return -1;
 }
 
 /* Creates the configuration directory if it doesn't already exist */

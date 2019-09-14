@@ -68,37 +68,3 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_OWNER := huawei
 LOCAL_SHARED_LIBRARIES := libm libcutils libc
 include $(BUILD_EXECUTABLE)
-
-
-# vmcmd
-include $(CLEAR_VARS)
-
-LOCAL_SRC_FILES := \
-	util.c \
-	vmcmd.cpp \
-	cellsocket.cpp 
-
-LOCAL_MODULE:= vmcmd
-LOCAL_MODULE_TAGS := optional
-LOCAL_MODULE_OWNER := huawei
-#LOCAL_MODULE_PATH := $(TARGET_ROOT_OUT_SBIN)
-LOCAL_SHARED_LIBRARIES := libm libcutils libc libgui libbinder libutils libpowermanager
-include $(BUILD_EXECUTABLE)
-
-
-#hostcmd
-include $(CLEAR_VARS)
-
-LOCAL_SRC_FILES := \
-	util.c \
-	hostcmd.cpp \
-	cellsocket.cpp
-
-LOCAL_MODULE:= hostcmd
-LOCAL_MODULE_TAGS := optional
-LOCAL_MODULE_OWNER := huawei
-#LOCAL_MODULE_PATH := $(TARGET_ROOT_OUT_SBIN)
-LOCAL_SHARED_LIBRARIES := libm libcutils libc libgui libbinder libutils libpowermanager
-include $(BUILD_EXECUTABLE)
-
-

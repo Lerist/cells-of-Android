@@ -1,28 +1,3 @@
-/*
- * celld.c
- *
- * The Cells controlling daemon, celld
- *
- * Copyright (C) 2010-2013 Columbia University
- * Authors: Christoffer Dall <cdall@cs.columbia.edu>
- *		  Jeremy C. Andrus <jeremya@cs.columbia.edu>
- *		  Alexander Van't Hof <alexvh@cs.columbia.edu>
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301,
- * USA.
- */
 #define _GNU_SOURCE
 #include <errno.h>
 #include <fcntl.h>
@@ -63,6 +38,20 @@
 
 #define MAX_CELL_AUTOSTART_ATTEMPTS 5
 
+static void config_host_net_work()
+{
+	system("iptables -t nat -D POSTROUTING -s 172.17.0.0/16 -o wlan0 -j MASQUERADE");
+	ALOGD("iptables -t nat -D POSTROUTING -s 172.17.0.0/16 -o wlan0 -j MASQUERADE errno=%s",strerror(errno));
+
+	system("iptables -t filter -D FORWARD -i wlan0 -o vm_wlan -j ACCEPT");
+	ALOGD("iptables -t filter -D FORWARD -i wlan0 -o vm_wlan -j ACCEPT errno=%s",strerror(errno));
+
+	system("iptables -t filter -D FORWARD -o wlan0 -i vm_wlan -j ACCEPT");
+	ALOGD("iptables -t filter -D FORWARD -o wlan0 -i vm_wlan -j ACCEPT errno=%s",strerror(errno));
+
+	system("ip link delete vm_wlan type veth");
+	ALOGD("ip link delete vm_wlan type veth errno=%s",strerror(errno));
+};
 
 char *g_cell_dir = DEFL_CELL_DIR;
 char *g_sdcard_root = DEFL_SDCARD_ROOT;
@@ -785,18 +774,59 @@ static int finish_cell_startup(char *name)
 	}
 	cell->starting = 0;
 	pthread_mutex_unlock(&g_cell_list.mutex);
-
 	delta = tv_to_usec(&stop_time) - tv_to_usec(&cell->start_time);
 	usec_to_tv(&stop_time, delta);
 	ALOGI("start(%s) duration: %ld seconds %ld microsec",
 		 name, stop_time.tv_sec, stop_time.tv_usec);
+
 	return 0;
+}
+
+static void *__monitor_start_state(void *arg)
+{
+	char *root_path = NULL;
+	char dev_dir_name[PATH_MAX];
+	char buf[20];
+	int ret;
+
+	struct cell_monitor_state *cms = (struct cell_monitor_state *)arg;
+	root_path = get_root_path(cms->name);
+
+	ALOGI("Waiting for '%s' to initialize...", cms->name);
+	ret = read(cms->child_fd, buf, 1);
+	if (ret == -1 || buf[0] != 1)
+		ALOGE("Error waiting for '%s' initialization", cms->name);
+
+	snprintf(buf, sizeof(buf), "%d", cms->pid);
+	write(cms->init_fd, buf, strlen(buf) + 1);
+	close(cms->init_fd);
+
+	snprintf(dev_dir_name, PATH_MAX, "%s/dev", root_path);
+
+	while(true){
+		sleep(1);
+
+		if(access(dev_dir_name, F_OK) != 0){
+			continue;
+		}
+
+		property_set("persist.sys.vm.init", "1");
+		break;
+	}
+
+	finish_cell_startup(cms->name);
+
+	ALOGI("Cell '%s' started!", cms->name);
+
+	free(cms);
+	free(root_path);
+	return (void*)0;
 }
 
 /* Monitors a named pipe inside a cell. Waits for Launcher2 to send a message
  * that the cell is ready. Updates starting state of cell upon receipt.
  */
-static void *__monitor_start_state(void *arg)
+static void *__monitor_start_state_bak(void *arg)
 {
 	int fd;
 	fd_set rfds;
@@ -820,14 +850,12 @@ static void *__monitor_start_state(void *arg)
 	if (!pipe_name)
 		goto __monitor_start_state_err;
 	memset(pipe_name, 0, PATH_MAX);
-
 	snprintf(pipe_name, PATH_MAX, "%s/dev/celld.startpipe", root_path);
 	unlink(pipe_name);
 	if (mkfifo(pipe_name, 0777) < 0) {
 		ALOGE("Failed to create pipe for start state update");
 		goto __monitor_start_state_err;
 	}
-
 	/* Unblock the new cell and wait for it to start up */
 	snprintf(buf, sizeof(buf), "%d", cms->pid);
 	write(cms->init_fd, buf, strlen(buf) + 1);
@@ -835,11 +863,10 @@ static void *__monitor_start_state(void *arg)
 
 	fd = open(pipe_name, O_RDONLY);
 	if (fd == -1) {
-		ALOGE("Cannot open start pipe");
+		ALOGE("Cannot open start pipe %s ",strerror(errno));
 		unlink(pipe_name);
 		goto __monitor_start_state_err;
 	}
-
 	FD_ZERO(&rfds);
 	FD_SET(fd, &rfds);
 
@@ -851,15 +878,11 @@ static void *__monitor_start_state(void *arg)
 	ALOGI("Waiting on for '%s' to start...", cms->name);
 	ret = select(fd+1, &rfds, NULL, NULL, &tv);
 	if (ret == -1)
-		ALOGE("select() on start pipe failed");
+		ALOGE("select() on start pipe failed %s ",strerror(errno));
 	else if (ret)
 		finish_cell_startup(cms->name);
 	close(fd);
 	unlink(pipe_name);
-
-	//property_set("ctl.start", "hostcmd");
-	//property_set("ctl.start", "qmuxproxyd");
-	//property_set("ctl.start", "rilproxyd");
 
 	ALOGI("Cell '%s' started!", cms->name);
 
@@ -1104,35 +1127,6 @@ static void do_list(int fd, struct cell_cmd_arg *cmd_args)
 	list_cells(fd, mask);
 }
 
-static void *mount_camera(void *opaque)
-{
-	int ret = 0;
-	char *name = (char *)opaque;
-	char file_name[128];
-
-	snprintf(file_name, sizeof(file_name), "/data/cells/%s/data/misc/camera", name);
-	for (;;) {
-		if (dir_exists("/data/misc/camera")) {
-			sleep(2);
-			while (!dir_exists(file_name)) {
-				sleep(1);
-			}
-
-			ret += mount("/data/misc/camera", file_name, NULL, MS_BIND, NULL);
-			if (ret) {
-				ALOGE("%s ret:%d errno:%d, %s", __func__, ret, errno, strerror(errno));
-			}
-			
-			break;
-		} else {
-			ALOGE("%s dir not exists", __func__);
-			sleep(1);
-		}
-	}
-
-	return (void *)0;
-}
-
 int __do_switch_host_and_vm(char *name)
 {
 	char buf[64];
@@ -1150,7 +1144,7 @@ int __do_switch_host_and_vm(char *name)
 	}
 
 	/* Perform the switch by writing to active_ns_pid */
-	fd = open("/proc/drv_ns/active_ns_pid", O_RDWR);
+	fd = open("/proc/drv_ns/active_ns_pid", O_WRONLY);
 	if (fd == -1) {
 		return -1;
 	}
@@ -1394,7 +1388,7 @@ static struct cell_node *__do_start(int fd, char *name,
 					struct cell_start_args *args)
 {
 	int pid = -1;
-	int config_ret, proc_fd;
+	int config_ret;
 	struct config_info config;
 	struct cell_node *new;
 	struct pty_info console_pty;
@@ -1420,7 +1414,7 @@ static struct cell_node *__do_start(int fd, char *name,
 	cell_args.argv[1] = NULL;
 	cell_args.argc = 1;
 
-	sleep(4);
+	//sleep(4);
 
 	/*
 	 * Start init in new namespace
@@ -1455,16 +1449,6 @@ static struct cell_node *__do_start(int fd, char *name,
 		return NULL;
 	}
 	new->start_time = cell_args.start_time;
-
-	/* set the tag name for the newly created device namespace */
-	proc_fd = open("/proc/drv_ns/ns_tag", O_WRONLY);
-	if (proc_fd >= 0) {
-		char buf[64];
-		snprintf(buf, sizeof(buf), "%d:%s", pid, name);
-		if (write(proc_fd, buf, strnlen(buf, sizeof(buf))) == -1)
-			ALOGW("Failed to set tag for %s (pid:%d)", name, pid);
-		close(proc_fd);
-	}
 
 	add_cell_node(new);
 
@@ -1519,11 +1503,6 @@ static void do_start(int fd, struct cell_cmd_arg *cmd_args)
 	ret = __do_start(fd, name, args);
 	pthread_mutex_unlock(&config_lock);
 
-	/*err = pthread_create(&thread, NULL, mount_camera, name);
-	if (err) {
-		ALOGE("mount_camera: ERROR(%d) %s", errno, strerror(errno));
-	}*/
-
 	/*
 	 * __do_start already sent and logged an error message.
 	 * It will have also clean up after itself on an error
@@ -1538,6 +1517,7 @@ static void do_start(int fd, struct cell_cmd_arg *cmd_args)
 	}
 
 	send_msg(fd, "Started %s", name);
+	ALOGI("start: Start %s\n end ", name);
 }
 
 static void do_stop(int fd, struct cell_cmd_arg *cmd_args)
@@ -1569,6 +1549,8 @@ static void do_stop(int fd, struct cell_cmd_arg *cmd_args)
 		active_cell = NULL;
 	pthread_mutex_unlock(&active_cell_lock);
 
+	config_host_net_work();
+
 	/* Remove cell from list */
 	mark_cell_deleted(cell);
 	pthread_mutex_unlock(&g_cell_list.mutex);
@@ -1587,6 +1569,8 @@ static void do_stop(int fd, struct cell_cmd_arg *cmd_args)
 	free(root_path);
 
 	send_msg(fd, "Stopped %s", name);
+
+	property_set("persist.sys.vm.init", "0");
 }
 
 static void do_destroy(int fd, struct cell_cmd_arg *cmd_args)
@@ -2316,10 +2300,12 @@ static int __autostart_cells(void)
 
 static void *autostart_runner(void* arg)
 {
+	__autostart_cells();
+
 	while (1) {
-		__autostart_cells();
-		sleep(10);
+		sleep(60*60*24);
 	}
+
 	return (void *)NULL;
 }
 
@@ -2693,6 +2679,9 @@ int main(int argc, char **argv)
 			exit(1);
 		}
 	}
+
+	property_set("persist.sys.exit", "0");
+	property_set("persist.sys.vm.init", "0");
 
 	if (init_celld(argv[0]) < 0) {
 		ALOGI("Could not initialize celld. Exiting.");

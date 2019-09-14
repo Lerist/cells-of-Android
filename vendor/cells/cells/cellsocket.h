@@ -5,8 +5,8 @@
 #ifndef CELL_SOCKET_H
 #define CELL_SOCKET_H
 
-#define VM_SOCKET_PATH_C "/dev/socket/.c_bridge"
-#define VM_SOCKET_PATH_H "/dev/socket/.h_bridge"
+#define VM_SOCKET_PATH_C "/dev/.c_bridge"
+#define VM_SOCKET_PATH_H "/dev/.h_bridge"
 
 #define HOST_BASE_CMD 0
 #define VM_BASE_CMD 0

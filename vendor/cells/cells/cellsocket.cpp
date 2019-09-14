@@ -238,11 +238,13 @@ void create_server_daemon(int bhost)
 		snprintf(socket_path, PATH_MAX, "%s",VM_SOCKET_PATH_H);
 	}
 
-	//ALOGD("creating daemon socket at: %s", socket_path);
+	ALOGD("creating daemon socket at: %s", socket_path);
 
 	fd = create_socket(socket_path);
-	if (fd == -1)
+	if (fd == -1){
+		ALOGD("creating daemon socket at: %s failed.", socket_path);
 		return;
+	}
 
 	/* Start listening for connections in a main thread */
 	listen_server_daemon(fd);
