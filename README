@@ -5,7 +5,7 @@
                         其中celld是运行在主系统中的daemon进程，负责创建容器空间
                         其中cellc是celld对应的命令行程序
 
-    2)、cellsserive --- 运行在主系统和辅助系统中的daemon进程，负责两系统交互
+    2)、cellsservice --- 运行在主系统和辅助系统中的daemon进程，负责两系统交互
 
     3)、fingerprintd --- 指纹虚拟化
 
